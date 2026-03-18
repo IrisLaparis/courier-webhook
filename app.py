@@ -34,7 +34,7 @@ def receive_webhook():
         if "Purchase Order (PO) has not been allocated" in message:
             msg = (
                 f"**快递状态更新**\n"
-                f"> 运单号：`{waybill}` ‼️ 未指派 ‼️"
+                f"> 运单号：`{waybill}` ❗未指派❗"
             )
             send_to_wecom(msg)
             return jsonify({"status": "ok"}), 200
