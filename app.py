@@ -9,12 +9,9 @@ def send_to_wecom(text):
     payload = {"msgtype": "markdown", "markdown": {"content": text}}
     requests.post(WECOM_WEBHOOK, json=payload)
 
-def parse_shipment_note(message):
-    """解析 Shipment note 里的 HTML 消息"""
-    # 去掉 HTML 标签
+def parse_delivery_note(message):
+    """解析约仓通知：DELIVERY{date}CONFIRMED{time}{ref}"""
     text = re.sub(r'<[^>]+>', '', message).strip()
-    # 提取日期、时间、约仓号
-    # 格式：DELIVERY{date}CONFIRMED{time}{ref}
     m = re.match(r'DELIVERY(.+?)CONFIRMED(.+?)([A-Z]{2,}[A-Z0-9]{6,}[A-Z]{2,3})$', text)
     if m:
         return m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
@@ -30,8 +27,18 @@ def receive_webhook():
     if "message" in data and data["message"]:
         waybill = data.get("shipment_short_tracking_reference", "未知")
         message = data.get("message", "")
-        date, time_range, booking_ref = parse_shipment_note(message)
 
+        # PO 未指派
+        if "Purchase Order (PO) has not been allocated" in message:
+            msg = (
+                f"**快递状态更新**\n"
+                f"> 运单号：`{waybill}` 未指派"
+            )
+            send_to_wecom(msg)
+            return jsonify({"status": "ok"}), 200
+
+        # 约仓通知
+        date, time_range, booking_ref = parse_delivery_note(message)
         if date and time_range and booking_ref:
             msg = (
                 f"**快递状态更新**\n"
@@ -39,12 +46,9 @@ def receive_webhook():
                 f"> 约仓时间：{date} {time_range}\n"
                 f"> 约仓号：`{booking_ref}`"
             )
-        else:
-            # 解析失败时显示原始备注
-            clean = re.sub(r'<[^>]+>', '', message).strip()
-            msg = f"**快递备注**\n> 运单号：`{waybill}`\n> 内容：{clean}"
+            send_to_wecom(msg)
 
-        send_to_wecom(msg)
+        # 其他 note 类型不通知
         return jsonify({"status": "ok"}), 200
 
     # ── Tracking event（有 tracking_events 字段）──
@@ -57,22 +61,18 @@ def receive_webhook():
     latest_msg      = events[0].get("message", "") if events else ""
     latest_location = events[0].get("location", "") if events else ""
 
+    # 只通知取消和退回
+    alert_statuses = {"cancelled", "returned-to-sender"}
+    if status.lower() not in alert_statuses:
+        return jsonify({"status": "ok"}), 200
+
     status_map = {
-        "delivered":           "✅ 已送达",
-        "cancelled":           "❌ 已取消",
-        "out_for_delivery":    "🚚 派送中",
-        "collected":           "📦 已揽收",
-        "returned-to-sender":  "↩️ 已退回",
-        "in-transit":          "🔄 运输中",
-        "at-hub":              "🏭 到达中转站",
-        "at-destination-hub":  "🏁 到达目的地站",
-        "delivery-assigned":   "👷 已分配派送员",
-        "collection-assigned": "📋 已分配取件员",
-        "submitted":           "📝 已提交",
+        "cancelled":          "❌ 已取消",
+        "returned-to-sender": "↩️ 已退回",
     }
     status_label = status_map.get(status.lower(), f"📋 {status}")
 
-    msg = f"**快递状态更新**\n> 运单号：`{waybill}`\n> 状态：{status_label}"
+    msg = f"**⚠️ 快递异常状态通知**\n> 运单号：`{waybill}`\n> 状态：{status_label}"
     if from_hub and to_hub:
         msg += f"\n> 路线：{from_hub} → {to_hub}"
     if latest_location:
