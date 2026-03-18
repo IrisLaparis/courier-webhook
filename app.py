@@ -93,14 +93,15 @@ def receive_webhook():
     latest_msg      = events[0].get("message", "") if events else ""
     latest_location = events[0].get("location", "") if events else ""
 
-    # 只通知取消和退回
-    alert_statuses = {"cancelled", "returned-to-sender"}
+    # 只通知取消、退回、揽收
+    alert_statuses = {"cancelled", "returned-to-sender", "collected"}
     if status.lower() not in alert_statuses:
         return jsonify({"status": "ok"}), 200
 
     status_map = {
         "cancelled":          "❌ 已取消",
         "returned-to-sender": "↩️ 已退回",
+        "collected":          "📦 已揽收",
     }
     status_label = status_map.get(status.lower(), f"📋 {status}")
 
