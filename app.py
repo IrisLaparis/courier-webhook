@@ -105,7 +105,7 @@ def receive_webhook():
     }
     status_label = status_map.get(status.lower(), f"📋 {status}")
 
-    msg = f"**⚠️ 快递异常状态通知**\n> 运单号：`{waybill}`\n> 状态：{status_label}"
+    msg = f"**⚠️ 快递状态通知**\n> 运单号：`{waybill}`\n> 状态：{status_label}"
     if from_hub and to_hub:
         msg += f"\n> 路线：{from_hub} → {to_hub}"
     if latest_location:
