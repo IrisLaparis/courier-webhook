@@ -37,8 +37,21 @@ def receive_webhook():
         # PO 未指派
         if "Purchase Order (PO) has not been allocated" in message:
             msg = (
-                f"**快递状态更新**\n"
+                f"**快递异常**\n"
                 f"> 运单号：`{waybill}` ❗未指派❗"
+            )
+            send_to_wecom(msg)
+            return jsonify({"status": "ok"}), 200
+
+        # 拒收退回（注意：和上面的 if 对齐，前面8个空格）
+        if "parcel to be returned to the collection address" in message:
+            clean = re.sub(r'<[^>]+>', '', message).strip()
+            reason_match = re.search(r'due to (.+?),\s*parcel to be returned', clean, re.IGNORECASE)
+            reason = reason_match.group(1).strip() if reason_match else "未知原因"
+            msg = (
+                f"**快递拒收**\n"
+                f"> 运单号：`{waybill}` 被 ❗❗拒收退回❗❗\n"
+                f"> 拒收原因：{reason}"
             )
             send_to_wecom(msg)
             return jsonify({"status": "ok"}), 200
