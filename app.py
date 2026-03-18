@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import requests, re
 
 WECOM_WEBHOOK = "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=42717010-0635-4e8c-a9ce-d824676db0b1"
 
 app = Flask(__name__)
+CORS(app)
 
 def send_to_wecom(text):
     payload = {"msgtype": "markdown", "markdown": {"content": text}}
