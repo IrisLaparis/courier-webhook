@@ -16,9 +16,9 @@ def send_to_wecom(text):
     requests.post(WECOM_WEBHOOK, json=payload)
 
 def parse_delivery_note(message):
-    """解析约仓通知：DELIVERY{date}CONFIRMED{time}{ref}"""
+    """解析约仓通知：DELIVERY {date} CONFIRMED {time} {ref} {hub}"""
     text = re.sub(r'<[^>]+>', '', message).strip()
-    m = re.match(r'DELIVERY(.+?)CONFIRMED(.+?)([A-Z]{2,}[A-Z0-9]{6,}[A-Z]{2,3})$', text)
+    m = re.match(r'DELIVERY\s+(.+?)\s+CONFIRMED\s+(.+?)\s+([A-Z]{2,}[A-Z0-9]{6,}[A-Z0-9]*\s*[A-Z]{2,3})$', text)
     if m:
         return m.group(1).strip(), m.group(2).strip(), m.group(3).strip()
     return None, None, None
