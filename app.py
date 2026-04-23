@@ -86,15 +86,9 @@ def receive_webhook():
             log_to_sheet(waybill, "拒收退回", reason)
             return jsonify({"status": "ok"}), 200
 
-        # 约仓通知
-        date, time_range, booking_ref = parse_delivery_note(message)
-        if date and time_range and booking_ref:
-            msg = f"**快递状态更新**\n> 运单号：`{waybill}` ✅ 已指派约仓\n> 约仓时间：{date} {time_range}\n> 约仓号：`{booking_ref}`"
-            send_to_wecom(msg)
-            log_to_sheet(waybill, "已指派约仓", f"{date} {time_range} {booking_ref}")
-            return jsonify({"status": "ok"}), 200
-
+        # 约仓通知（不发通知）
         return jsonify({"status": "ok"}), 200
+
 
     # ── Tracking event ──
     waybill    = data.get("short_tracking_reference", "未知")
@@ -106,7 +100,7 @@ def receive_webhook():
     latest_msg      = events[0].get("message", "") if events else ""
     latest_location = events[0].get("location", "") if events else ""
 
-    alert_statuses = {"cancelled", "returned-to-sender", "collected"}
+    alert_statuses = {"cancelled", "returned-to-sender"}
     if status.lower() not in alert_statuses:
         return jsonify({"status": "ok"}), 200
 
